@@ -50,9 +50,20 @@ app.get('/', (req, res) => {
 const PORT = process.env.PORT || 3000;
 
 if (require.main === module) {
-  app.listen(PORT, () => {
-    console.log(`ERP Gestão de Pessoas rodando na porta ${PORT}`);
-  });
+  const { initDatabase } = require('./database');
+  initDatabase()
+    .then(() => {
+      app.listen(PORT, () => {
+        console.log(`ERP Gestão de Pessoas rodando na porta ${PORT}`);
+      });
+    })
+    .catch((err) => {
+      console.error('Erro ao inicializar banco:', err.message);
+      // Inicia mesmo sem banco para não travar o deploy
+      app.listen(PORT, () => {
+        console.log(`ERP rodando na porta ${PORT} (banco indisponivel)`);
+      });
+    });
 }
 
 module.exports = app;
