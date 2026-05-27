@@ -239,7 +239,7 @@ resource "aws_secretsmanager_secret_version" "sonar_token" {
   secret_id = aws_secretsmanager_secret.sonar_token.id
   secret_string = jsonencode({
     token = "sqa_e69e1691948b7506aae4adfc70853f90c612c79c"
-    url   = "http://${aws_instance.sonarqube.private_ip}:9000"
+    url   = "http://${aws_instance.sonarqube.public_ip}:9000"
   })
 }
 
@@ -277,7 +277,7 @@ resource "aws_codebuild_project" "security_scan" {
 
     environment_variable {
       name  = "SONAR_HOST_URL"
-      value = "http://${aws_instance.sonarqube.private_ip}:9000"
+      value = "http://${aws_instance.sonarqube.public_ip}:9000"
     }
 
     environment_variable {
