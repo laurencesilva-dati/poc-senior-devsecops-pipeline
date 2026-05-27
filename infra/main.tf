@@ -136,7 +136,7 @@ resource "aws_instance" "app_staging" {
   iam_instance_profile   = aws_iam_instance_profile.ec2_codedeploy.name
 
   root_block_device {
-    volume_size = 10
+    volume_size = 30
     volume_type = "gp3"
   }
 
@@ -168,7 +168,7 @@ resource "aws_instance" "app_prod" {
   iam_instance_profile   = aws_iam_instance_profile.ec2_codedeploy.name
 
   root_block_device {
-    volume_size = 10
+    volume_size = 30
     volume_type = "gp3"
   }
 
