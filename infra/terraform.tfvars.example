@@ -1,0 +1,10 @@
+# Exemplo de variáveis - copiar para terraform.tfvars e preencher
+region        = "us-east-1"
+aws_profile   = "laurence-poc-dati"
+key_pair_name = "poc-devsecops-key"
+db_username   = "admin"
+db_password   = "Administrator-123"
+db_name       = "erp_pessoas"
+sonar_db_password = "sonar123"
+github_repo   = "https://github.com/SEU_USER/poc-senior-devsecops-pipeline"
+github_token  = ""

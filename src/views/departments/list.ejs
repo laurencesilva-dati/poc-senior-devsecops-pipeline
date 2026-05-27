@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head><title>ERP - Departamentos</title>
+<style>
+  body { font-family: Arial, sans-serif; margin: 20px; background: #f0f2f5; }
+  .container { max-width: 1200px; margin: 0 auto; }
+  nav { background: #001529; padding: 15px 20px; border-radius: 4px; margin-bottom: 20px; }
+  nav a { color: white; text-decoration: none; margin-right: 20px; }
+  table { width: 100%; border-collapse: collapse; background: white; border-radius: 4px; }
+  th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #eee; }
+  th { background: #fafafa; }
+  .btn { padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; }
+  .btn-danger { background: #ff4d4f; color: white; }
+  h1 { color: #333; }
+</style>
+</head>
+<body>
+<div class="container">
+  <nav>
+    <a href="/users">Usuários</a>
+    <a href="/departments">Departamentos</a>
+    <a href="/vacations">Férias</a>
+    <a href="/logout" style="float:right">Sair</a>
+  </nav>
+  <h1>Departamentos</h1>
+  <table>
+    <thead><tr><th>ID</th><th>Nome</th><th>Gestor</th><th>Orçamento</th><th>Ações</th></tr></thead>
+    <tbody>
+      <% departments.forEach(dept => { %>
+      <tr>
+        <td><%= dept.id %></td>
+        <td><%= dept.name %></td>
+        <td><%= dept.manager_name || '-' %></td>
+        <td>R$ <%= dept.budget ? dept.budget.toLocaleString() : '0' %></td>
+        <td>
+          <form method="POST" action="/departments/<%= dept.id %>/delete" style="display:inline">
+            <button type="submit" class="btn btn-danger">Excluir</button>
+          </form>
+        </td>
+      </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</div>
+</body>
+</html>

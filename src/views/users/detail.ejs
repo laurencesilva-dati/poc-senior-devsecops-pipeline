@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head><title>ERP - Detalhes do Usuário</title>
+<style>
+  body { font-family: Arial, sans-serif; margin: 20px; background: #f0f2f5; }
+  .container { max-width: 600px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; }
+  h1 { color: #333; }
+  .field { margin: 10px 0; }
+  .field label { font-weight: 600; }
+  a { color: #1890ff; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Detalhes do Usuário</h1>
+  <div class="field"><label>ID:</label> <%= user.id %></div>
+  <div class="field"><label>Username:</label> <%= user.username %></div>
+  <!-- Vulnerabilidade: XSS -->
+  <div class="field"><label>Nome:</label> <%- user.full_name %></div>
+  <div class="field"><label>Email:</label> <%= user.email %></div>
+  <div class="field"><label>Departamento:</label> <%= user.department_name || '-' %></div>
+  <div class="field"><label>Role:</label> <%= user.role %></div>
+  <div class="field"><label>Criado em:</label> <%= user.created_at %></div>
+  <br>
+  <a href="/users">Voltar</a>
+</div>
+</body>
+</html>

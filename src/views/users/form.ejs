@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>ERP - Novo Usuário</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; background: #f0f2f5; }
+    .container { max-width: 600px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; }
+    h1 { color: #333; }
+    label { display: block; margin: 10px 0 5px; font-weight: 600; }
+    input, select { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
+    .btn { padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; }
+    .btn-primary { background: #1890ff; color: white; }
+    .error { color: red; margin: 10px 0; }
+    a { color: #1890ff; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Novo Usuário</h1>
+    <% if (error) { %>
+      <div class="error"><%= error %></div>
+    <% } %>
+    <form method="POST" action="/users">
+      <label>Username</label>
+      <input type="text" name="username" value="<%= user ? user.username : '' %>" required>
+      <label>Senha</label>
+      <!-- Vulnerabilidade: sem requisitos de complexidade de senha -->
+      <input type="password" name="password" required>
+      <label>Email</label>
+      <!-- Vulnerabilidade: sem validação de formato de email -->
+      <input type="text" name="email" value="<%= user ? user.email : '' %>">
+      <label>Nome Completo</label>
+      <input type="text" name="full_name" value="<%= user ? user.full_name : '' %>">
+      <label>Departamento ID</label>
+      <input type="number" name="department_id" value="<%= user ? user.department_id : '' %>">
+      <label>Role</label>
+      <select name="role">
+        <option value="user">Usuário</option>
+        <option value="admin">Administrador</option>
+      </select>
+      <br><br>
+      <button type="submit" class="btn btn-primary">Salvar</button>
+      <a href="/users">Cancelar</a>
+    </form>
+  </div>
+</body>
+</html>

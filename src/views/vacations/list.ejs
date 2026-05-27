@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head><title>ERP - Férias</title>
+<style>
+  body { font-family: Arial, sans-serif; margin: 20px; background: #f0f2f5; }
+  .container { max-width: 1200px; margin: 0 auto; }
+  nav { background: #001529; padding: 15px 20px; border-radius: 4px; margin-bottom: 20px; }
+  nav a { color: white; text-decoration: none; margin-right: 20px; }
+  table { width: 100%; border-collapse: collapse; background: white; border-radius: 4px; }
+  th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #eee; }
+  th { background: #fafafa; }
+  .btn { padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; }
+  .btn-success { background: #52c41a; color: white; }
+  .btn-danger { background: #ff4d4f; color: white; }
+  .status-pending { color: #faad14; }
+  .status-approved { color: #52c41a; }
+  .status-rejected { color: #ff4d4f; }
+  h1 { color: #333; }
+</style>
+</head>
+<body>
+<div class="container">
+  <nav>
+    <a href="/users">Usuários</a>
+    <a href="/departments">Departamentos</a>
+    <a href="/vacations">Férias</a>
+    <a href="/logout" style="float:right">Sair</a>
+  </nav>
+  <h1>Gestão de Férias</h1>
+  <table>
+    <thead><tr><th>ID</th><th>Colaborador</th><th>Início</th><th>Fim</th><th>Status</th><th>Aprovado por</th><th>Ações</th></tr></thead>
+    <tbody>
+      <% vacations.forEach(v => { %>
+      <tr>
+        <td><%= v.id %></td>
+        <td><%= v.user_name %></td>
+        <td><%= v.start_date %></td>
+        <td><%= v.end_date %></td>
+        <td class="status-<%= v.status %>"><%= v.status %></td>
+        <td><%= v.approver_name || '-' %></td>
+        <td>
+          <% if (v.status === 'pending') { %>
+            <form method="POST" action="/vacations/<%= v.id %>/approve" style="display:inline">
+              <button class="btn btn-success">Aprovar</button>
+            </form>
+            <form method="POST" action="/vacations/<%= v.id %>/reject" style="display:inline">
+              <button class="btn btn-danger">Rejeitar</button>
+            </form>
+          <% } %>
+        </td>
+      </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</div>
+</body>
+</html>
