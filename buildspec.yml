@@ -6,7 +6,7 @@ version: 0.2
 
 env:
   variables:
-    SONAR_HOST_URL: "http://52.207.212.75:9000"
+    SONAR_HOST_URL: "http://54.88.165.143:9000"
     SONAR_PROJECT_KEY: "poc-erp-gestao-pessoas"
     SONAR_PROJECT_NAME: "POC ERP Gestao de Pessoas"
   secrets-manager:
