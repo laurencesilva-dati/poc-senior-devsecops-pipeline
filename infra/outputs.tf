@@ -4,8 +4,8 @@ output "sonarqube_url" {
 }
 
 output "grafana_url" {
-  description = "URL do Grafana"
-  value       = "http://${aws_instance.sonarqube.public_ip}:3001"
+  description = "URL do Grafana (instancia dedicada)"
+  value       = "http://${aws_instance.grafana.public_ip}:3000"
 }
 
 output "app_staging_url" {
