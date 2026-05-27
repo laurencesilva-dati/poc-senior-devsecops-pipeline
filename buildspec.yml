@@ -4,7 +4,6 @@ env:
   variables:
     SONAR_HOST_URL: "http://54.88.165.143:9000"
     SONAR_PROJECT_KEY: "poc-erp-gestao-pessoas"
-    SONAR_PROJECT_NAME: "POC ERP Gestao de Pessoas"
   secrets-manager:
     SONAR_TOKEN: "poc-devsecops/sonarqube:token"
 
@@ -24,29 +23,28 @@ phases:
 
   pre_build:
     commands:
-      - echo "=== SAST - SonarQube Scanner ==="
+      - echo "=== SAST - SonarQube ==="
       - sonar-scanner -Dsonar.host.url=$SONAR_HOST_URL -Dsonar.login=$SONAR_TOKEN -Dsonar.projectKey=$SONAR_PROJECT_KEY -Dsonar.sources=src -Dsonar.tests=tests -Dsonar.exclusions=**/node_modules/**,**/coverage/** -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info -Dsonar.sourceEncoding=UTF-8
       - echo "=== SCA - Trivy ==="
       - trivy fs --severity HIGH,CRITICAL --exit-code 0 . || true
-      - echo "=== Secret Detection - TruffleHog ==="
+      - echo "=== Secret Detection ==="
       - trufflehog filesystem --directory=. --only-verified 2>/dev/null || true
-      - echo "=== IaC Scan - Trivy ==="
+      - echo "=== IaC Scan ==="
       - trivy config --severity HIGH,CRITICAL ./infra || true
 
   build:
     commands:
-      - echo "=== UNIT TESTS + COVERAGE ==="
+      - echo "=== UNIT TESTS ==="
       - npm run test:ci
-      - echo "=== QUALITY GATE CHECK ==="
+      - echo "=== QUALITY GATE ==="
       - sleep 15
-      - curl -s -u $SONAR_TOKEN:'' $SONAR_HOST_URL/api/qualitygates/project_status?projectKey=$SONAR_PROJECT_KEY > qg_result.json
-      - cat qg_result.json
-      - QG_STATUS=$(cat qg_result.json | python3 -c "import sys,json; print(json.load(sys.stdin).get('projectStatus',{}).get('status','OK'))" 2>/dev/null || echo OK)
-      - echo "Quality Gate Status = $QG_STATUS"
+      - curl -s -u $SONAR_TOKEN:'' $SONAR_HOST_URL/api/qualitygates/project_status?projectKey=$SONAR_PROJECT_KEY > qg.json
+      - cat qg.json
+      - python3 -c 'import json; d=json.load(open("qg.json")); s=d.get("projectStatus",{}).get("status","OK"); print(f"QG={s}"); exit(1 if s=="ERROR" else 0)'
 
   post_build:
     commands:
-      - echo "Build concluido. Artefatos prontos para deploy."
+      - echo "Pipeline DevSecOps concluida com sucesso"
 
 artifacts:
   files:
