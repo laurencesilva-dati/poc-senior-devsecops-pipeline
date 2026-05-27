@@ -1,18 +1,26 @@
 #!/bin/bash
-# User data para EC2 da aplicação Node.js
+# User data para EC2 da aplicação Node.js + CodeDeploy Agent
 set -e
 
 # Atualizar sistema
 yum update -y
-yum install -y git
+yum install -y git ruby wget
 
 # Instalar Node.js 20
 curl -fsSL https://rpm.nodesource.com/setup_20.x | bash -
 yum install -y nodejs
 
+# Instalar CodeDeploy Agent
+cd /tmp
+wget https://aws-codedeploy-us-east-1.s3.us-east-1.amazonaws.com/latest/install
+chmod +x ./install
+./install auto
+systemctl start codedeploy-agent
+systemctl enable codedeploy-agent
+
 # Criar diretório da aplicação
 mkdir -p /opt/app
-cd /opt/app
+chown ec2-user:ec2-user /opt/app
 
 # Variáveis de ambiente da aplicação
 cat > /opt/app/.env << EOF
@@ -21,25 +29,9 @@ DB_USER=${db_user}
 DB_PASS=${db_pass}
 DB_NAME=${db_name}
 PORT=3000
+NODE_ENV=production
 EOF
 
-# Criar serviço systemd
-cat > /etc/systemd/system/erp-app.service << 'EOF'
-[Unit]
-Description=ERP Gestao de Pessoas
-After=network.target
+chown ec2-user:ec2-user /opt/app/.env
 
-[Service]
-Type=simple
-User=ec2-user
-WorkingDirectory=/opt/app
-EnvironmentFile=/opt/app/.env
-ExecStart=/usr/bin/node src/server.js
-Restart=on-failure
-RestartSec=10
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-echo "EC2 da aplicação configurada. Deploy do código será feito via CodeBuild."
+echo "EC2 configurada com Node.js e CodeDeploy Agent."
