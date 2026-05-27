@@ -4,7 +4,7 @@
   "computeType": "BUILD_GENERAL1_SMALL",
   "environmentVariables": [
     {"name": "SONAR_HOST_URL", "value": "http://54.88.165.143:9000", "type": "PLAINTEXT"},
-    {"name": "SONAR_TOKEN", "value": "poc-devsecops/sonarqube:token", "type": "SECRETS_MANAGER"},
+    {"name": "SONAR_TOKEN", "value": "sqa_dcfc4da158d428310321efdeca2e495a4262001b", "type": "PLAINTEXT"},
     {"name": "SONAR_PROJECT_KEY", "value": "poc-erp-gestao-pessoas", "type": "PLAINTEXT"}
   ]
 }

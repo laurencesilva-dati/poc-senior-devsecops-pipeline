@@ -282,8 +282,8 @@ resource "aws_codebuild_project" "security_scan" {
 
     environment_variable {
       name  = "SONAR_TOKEN"
-      value = "poc-devsecops/sonarqube:token"
-      type  = "SECRETS_MANAGER"
+      value = "sqa_dcfc4da158d428310321efdeca2e495a4262001b"
+      type  = "PLAINTEXT"
     }
 
     environment_variable {
@@ -329,14 +329,9 @@ resource "aws_codedeploy_deployment_group" "staging" {
 
   ec2_tag_set {
     ec2_tag_filter {
-      key   = "Environment"
+      key   = "Name"
       type  = "KEY_AND_VALUE"
-      value = "staging"
-    }
-    ec2_tag_filter {
-      key   = "Role"
-      type  = "KEY_AND_VALUE"
-      value = "application"
+      value = "poc-staging-app"
     }
   }
 
@@ -356,14 +351,9 @@ resource "aws_codedeploy_deployment_group" "prod" {
 
   ec2_tag_set {
     ec2_tag_filter {
-      key   = "Environment"
+      key   = "Name"
       type  = "KEY_AND_VALUE"
-      value = "prod"
-    }
-    ec2_tag_filter {
-      key   = "Role"
-      type  = "KEY_AND_VALUE"
-      value = "application"
+      value = "poc-prod-app"
     }
   }
 
