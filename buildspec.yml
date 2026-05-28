@@ -4,7 +4,7 @@ env:
   variables:
     SONAR_HOST_URL: "http://54.88.165.143:9000"
     SONAR_PROJECT_KEY: "poc-erp-gestao-pessoas"
-    SONAR_TOKEN: "sqa_dcfc4da158d428310321efdeca2e495a4262001b"
+    # SONAR_TOKEN configurado no CodeBuild project (environment variable)
 
 phases:
   install:
