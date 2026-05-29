@@ -1,0 +1,45 @@
+version: 0.2
+
+# Pipeline de SCAN: trigada por push na branch dev
+# Objetivo: analisar o codigo no SonarQube e registrar metricas
+# NAO faz deploy, NAO bloqueia nada - apenas analisa e registra
+
+env:
+  variables:
+    SONAR_HOST_URL: "http://54.88.165.143:9000"
+    SONAR_PROJECT_KEY: "poc-erp-gestao-pessoas"
+    # SONAR_TOKEN configurado no CodeBuild project
+
+phases:
+  install:
+    runtime-versions:
+      nodejs: 20
+    commands:
+      - echo "=== INSTALL ==="
+      - npm ci
+      - export SONAR_SCANNER_VERSION=5.0.1.3006
+      - curl -sSLo sonar-scanner.zip https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-${SONAR_SCANNER_VERSION}-linux.zip
+      - unzip -q sonar-scanner.zip
+      - export PATH=$PATH:$(pwd)/sonar-scanner-${SONAR_SCANNER_VERSION}-linux/bin
+      - curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+
+  pre_build:
+    commands:
+      - echo "=== UNIT TESTS + COVERAGE ==="
+      - npm run test:ci
+
+  build:
+    commands:
+      - echo "=== SAST - SonarQube Scanner ==="
+      - sonar-scanner -Dsonar.host.url=$SONAR_HOST_URL -Dsonar.login=$SONAR_TOKEN -Dsonar.projectKey=$SONAR_PROJECT_KEY -Dsonar.sources=src -Dsonar.tests=tests -Dsonar.exclusions=**/node_modules/**,**/coverage/** -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info -Dsonar.sourceEncoding=UTF-8
+      - echo "=== SCA - Trivy ==="
+      - trivy fs --severity HIGH,CRITICAL --exit-code 0 . || true
+
+  post_build:
+    commands:
+      - echo "=== Scan concluido ==="
+      - echo "Metricas registradas no SonarQube. Consulte o dashboard para ver resultados."
+      - sleep 10
+      - curl -s -u $SONAR_TOKEN:'' "$SONAR_HOST_URL/api/measures/component?component=$SONAR_PROJECT_KEY&metricKeys=coverage,vulnerabilities,bugs,code_smells,security_hotspots" > result.json
+      - cat result.json
+      - echo "Analise disponivel em $SONAR_HOST_URL/dashboard?id=$SONAR_PROJECT_KEY"

@@ -1,0 +1,26 @@
+version: 0.2
+
+# Pipeline de DEPLOY: trigada apos merge em staging ou prod
+# Apenas prepara artefatos para o CodeDeploy
+
+phases:
+  install:
+    runtime-versions:
+      nodejs: 20
+    commands:
+      - echo "=== Preparando artefatos para deploy ==="
+      - npm ci --production
+
+  build:
+    commands:
+      - echo "Artefatos prontos para CodeDeploy"
+
+artifacts:
+  files:
+    - "**/*"
+  exclude-paths:
+    - node_modules/**
+    - coverage/**
+    - .scannerwork/**
+    - infra/**
+    - tests/**
