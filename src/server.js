@@ -33,11 +33,13 @@ const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
 const departmentRoutes = require('./routes/departments');
 const vacationRoutes = require('./routes/vacations');
+const adminRoutes = require('./routes/admin');
 
 app.use('/', authRoutes);
 app.use('/users', userRoutes);
 app.use('/departments', departmentRoutes);
 app.use('/vacations', vacationRoutes);
+app.use('/admin', adminRoutes);
 
 // Rota principal
 app.get('/', (req, res) => {
