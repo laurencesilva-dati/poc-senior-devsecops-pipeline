@@ -1,44 +1,35 @@
 version: 0.2
 
+# Pipeline de PR: consulta API do SonarQube e reporta status no GitHub
+# NAO faz scan - apenas verifica se o projeto esta em conformidade
+# Trigada por PR para staging ou prod
+
 env:
   variables:
     SONAR_HOST_URL: "http://54.88.165.143:9000"
     SONAR_PROJECT_KEY: "poc-erp-gestao-pessoas"
     GITHUB_REPO: "laurencesilva-dati/poc-senior-devsecops-pipeline"
-    # SONAR_TOKEN e GITHUB_TOKEN configurados no CodeBuild project (environment variables)
+    # SONAR_TOKEN e GITHUB_TOKEN configurados no CodeBuild project
 
 phases:
   install:
     runtime-versions:
       nodejs: 20
     commands:
-      - echo "=== INSTALL ==="
-      - npm ci
-      - export SONAR_SCANNER_VERSION=5.0.1.3006
-      - curl -sSLo sonar-scanner.zip https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-${SONAR_SCANNER_VERSION}-linux.zip
-      - unzip -q sonar-scanner.zip
-      - export PATH=$PATH:$(pwd)/sonar-scanner-${SONAR_SCANNER_VERSION}-linux/bin
+      - echo "=== PR VALIDATION - Consulta Quality Gate ==="
 
-  pre_build:
+  build:
     commands:
-      - echo "=== SAST SCAN ==="
       - COMMIT_SHA=${CODEBUILD_RESOLVED_SOURCE_VERSION}
-      - echo "Commit SHA = $COMMIT_SHA"
+      - echo "Commit = $COMMIT_SHA"
       - |
         curl -s -X POST \
           -H "Authorization: token $GITHUB_TOKEN" \
           -H "Accept: application/vnd.github.v3+json" \
           "https://api.github.com/repos/$GITHUB_REPO/statuses/$COMMIT_SHA" \
-          -d '{"state":"pending","context":"sonarqube-quality-gate","description":"Analise de seguranca em andamento..."}'
-      - sonar-scanner -Dsonar.host.url=$SONAR_HOST_URL -Dsonar.login=$SONAR_TOKEN -Dsonar.projectKey=$SONAR_PROJECT_KEY -Dsonar.sources=src -Dsonar.tests=tests -Dsonar.exclusions=**/node_modules/**,**/coverage/** -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info -Dsonar.sourceEncoding=UTF-8
-
-  build:
-    commands:
-      - echo "=== UNIT TESTS ==="
-      - npm run test:ci
-      - echo "=== QUALITY GATE CHECK (overall metrics) ==="
-      - sleep 15
-      - curl -s -u $SONAR_TOKEN:'' "$SONAR_HOST_URL/api/measures/component?component=$SONAR_PROJECT_KEY&metricKeys=coverage,duplicated_lines_density,vulnerabilities,security_hotspots,security_hotspots_reviewed,bugs,security_rating" > metrics.json
+          -d '{"state":"pending","context":"sonarqube-quality-gate","description":"Verificando Quality Gate..."}'
+      - echo "Consultando metricas do SonarQube..."
+      - curl -s -u $SONAR_TOKEN:'' "$SONAR_HOST_URL/api/measures/component?component=$SONAR_PROJECT_KEY&metricKeys=coverage,duplicated_lines_density,vulnerabilities,security_hotspots,security_hotspots_reviewed,security_rating" > metrics.json
       - cat metrics.json
       - |
         python3 << 'PYEOF'
@@ -48,45 +39,47 @@ phases:
             data = json.load(f)
 
         measures = {m['metric']: m.get('value', '0') for m in data.get('component', {}).get('measures', [])}
-        print(f"Metricas: {measures}")
+        print(f"\nMetricas do projeto:")
+        for k, v in measures.items():
+            print(f"  {k}: {v}")
 
         failures = []
 
-        # Coverage < 80%
         coverage = float(measures.get('coverage', '0'))
         if coverage < 80:
             failures.append(f"Coverage {coverage}% < 80%")
 
-        # Duplicated lines > 3%
         dup = float(measures.get('duplicated_lines_density', '0'))
         if dup > 3:
             failures.append(f"Duplicated lines {dup}% > 3%")
 
-        # Vulnerabilities > 0
         vulns = int(measures.get('vulnerabilities', '0'))
         if vulns > 0:
             failures.append(f"Vulnerabilities: {vulns}")
 
-        # Security hotspots not reviewed
         hotspots = int(measures.get('security_hotspots', '0'))
         reviewed = float(measures.get('security_hotspots_reviewed', '0'))
         if hotspots > 0 and reviewed < 100:
-            failures.append(f"Security Hotspots reviewed: {reviewed}% < 100%")
+            failures.append(f"Security Hotspots: {hotspots} nao revisados ({reviewed}% reviewed)")
 
-        # Security rating > A (1=A, 2=B, 3=C, 4=D, 5=E)
         sec_rating = float(measures.get('security_rating', '1'))
         if sec_rating > 1:
-            failures.append(f"Security Rating: {int(sec_rating)} (deve ser 1=A)")
+            failures.append(f"Security Rating: {int(sec_rating)} (deve ser A=1)")
 
         if failures:
-            print("\n=== QUALITY GATE FAILED ===")
+            print(f"\n{'='*50}")
+            print("QUALITY GATE: FAILED")
+            print(f"{'='*50}")
             for f in failures:
-                print(f"  FAIL: {f}")
+                print(f"  X {f}")
+            print(f"\nMerge BLOQUEADO. Corrija os problemas e faca novo push em dev.")
             with open('qg_result.txt', 'w') as out:
                 out.write('FAILED')
-            sys.exit(0)  # nao falhar aqui, reportar no post_build
         else:
-            print("\n=== QUALITY GATE PASSED ===")
+            print(f"\n{'='*50}")
+            print("QUALITY GATE: PASSED")
+            print(f"{'='*50}")
+            print("Merge LIBERADO.")
             with open('qg_result.txt', 'w') as out:
                 out.write('PASSED')
         PYEOF
@@ -94,18 +87,15 @@ phases:
   post_build:
     commands:
       - QG_RESULT=$(cat qg_result.txt 2>/dev/null || echo PASSED)
-      - echo "Quality Gate Result = $QG_RESULT"
       - |
         if [ "$QG_RESULT" = "FAILED" ]; then
-          echo "Reportando FAILURE no GitHub..."
           curl -s -X POST \
             -H "Authorization: token $GITHUB_TOKEN" \
             -H "Accept: application/vnd.github.v3+json" \
             "https://api.github.com/repos/$GITHUB_REPO/statuses/$COMMIT_SHA" \
-            -d '{"state":"failure","context":"sonarqube-quality-gate","description":"Quality Gate FAILED - merge bloqueado","target_url":"'"$SONAR_HOST_URL/dashboard?id=$SONAR_PROJECT_KEY"'"}'
+            -d '{"state":"failure","context":"sonarqube-quality-gate","description":"Quality Gate FAILED - corrija o codigo em dev","target_url":"'"$SONAR_HOST_URL/dashboard?id=$SONAR_PROJECT_KEY"'"}'
           exit 1
         else
-          echo "Reportando SUCCESS no GitHub..."
           curl -s -X POST \
             -H "Authorization: token $GITHUB_TOKEN" \
             -H "Accept: application/vnd.github.v3+json" \
