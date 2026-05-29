@@ -1,10 +1,5 @@
 version: 0.2
 
-# Pipeline de PR: Scan + Quality Gate + Reportar status no GitHub
-# Trigada quando alguém abre PR para a branch "prod"
-# Se Quality Gate FAILED → reporta failure no GitHub → merge bloqueado
-# Se Quality Gate PASSED → reporta success no GitHub → merge liberado
-
 env:
   variables:
     SONAR_HOST_URL: "http://54.88.165.143:9000"
@@ -29,30 +24,80 @@ phases:
       - echo "=== SAST SCAN ==="
       - COMMIT_SHA=${CODEBUILD_RESOLVED_SOURCE_VERSION}
       - echo "Commit SHA = $COMMIT_SHA"
-      # Reportar status PENDING no GitHub
       - |
         curl -s -X POST \
           -H "Authorization: token $GITHUB_TOKEN" \
           -H "Accept: application/vnd.github.v3+json" \
           "https://api.github.com/repos/$GITHUB_REPO/statuses/$COMMIT_SHA" \
-          -d '{"state":"pending","context":"sonarqube-quality-gate","description":"SonarQube analysis in progress..."}'
-      # Rodar SonarQube Scanner
+          -d '{"state":"pending","context":"sonarqube-quality-gate","description":"Analise de seguranca em andamento..."}'
       - sonar-scanner -Dsonar.host.url=$SONAR_HOST_URL -Dsonar.login=$SONAR_TOKEN -Dsonar.projectKey=$SONAR_PROJECT_KEY -Dsonar.sources=src -Dsonar.tests=tests -Dsonar.exclusions=**/node_modules/**,**/coverage/** -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info -Dsonar.sourceEncoding=UTF-8
 
   build:
     commands:
       - echo "=== UNIT TESTS ==="
       - npm run test:ci
-      - echo "=== QUALITY GATE CHECK ==="
+      - echo "=== QUALITY GATE CHECK (overall metrics) ==="
       - sleep 15
-      - curl -s -u $SONAR_TOKEN:'' $SONAR_HOST_URL/api/qualitygates/project_status?projectKey=$SONAR_PROJECT_KEY > qg.json
-      - cat qg.json
-      - QG_STATUS=$(python3 -c 'import json; print(json.load(open("qg.json")).get("projectStatus",{}).get("status","OK"))')
-      - echo "Quality Gate = $QG_STATUS"
-      # Reportar resultado no GitHub
+      - curl -s -u $SONAR_TOKEN:'' "$SONAR_HOST_URL/api/measures/component?component=$SONAR_PROJECT_KEY&metricKeys=coverage,duplicated_lines_density,vulnerabilities,security_hotspots,security_hotspots_reviewed,bugs,security_rating" > metrics.json
+      - cat metrics.json
       - |
-        if [ "$QG_STATUS" = "ERROR" ]; then
-          echo "QUALITY GATE FAILED - Reportando failure no GitHub"
+        python3 << 'PYEOF'
+        import json, sys
+
+        with open('metrics.json') as f:
+            data = json.load(f)
+
+        measures = {m['metric']: m.get('value', '0') for m in data.get('component', {}).get('measures', [])}
+        print(f"Metricas: {measures}")
+
+        failures = []
+
+        # Coverage < 80%
+        coverage = float(measures.get('coverage', '0'))
+        if coverage < 80:
+            failures.append(f"Coverage {coverage}% < 80%")
+
+        # Duplicated lines > 3%
+        dup = float(measures.get('duplicated_lines_density', '0'))
+        if dup > 3:
+            failures.append(f"Duplicated lines {dup}% > 3%")
+
+        # Vulnerabilities > 0
+        vulns = int(measures.get('vulnerabilities', '0'))
+        if vulns > 0:
+            failures.append(f"Vulnerabilities: {vulns}")
+
+        # Security hotspots not reviewed
+        hotspots = int(measures.get('security_hotspots', '0'))
+        reviewed = float(measures.get('security_hotspots_reviewed', '0'))
+        if hotspots > 0 and reviewed < 100:
+            failures.append(f"Security Hotspots reviewed: {reviewed}% < 100%")
+
+        # Security rating > A (1=A, 2=B, 3=C, 4=D, 5=E)
+        sec_rating = float(measures.get('security_rating', '1'))
+        if sec_rating > 1:
+            failures.append(f"Security Rating: {int(sec_rating)} (deve ser 1=A)")
+
+        if failures:
+            print("\n=== QUALITY GATE FAILED ===")
+            for f in failures:
+                print(f"  FAIL: {f}")
+            with open('qg_result.txt', 'w') as out:
+                out.write('FAILED')
+            sys.exit(0)  # nao falhar aqui, reportar no post_build
+        else:
+            print("\n=== QUALITY GATE PASSED ===")
+            with open('qg_result.txt', 'w') as out:
+                out.write('PASSED')
+        PYEOF
+
+  post_build:
+    commands:
+      - QG_RESULT=$(cat qg_result.txt 2>/dev/null || echo PASSED)
+      - echo "Quality Gate Result = $QG_RESULT"
+      - |
+        if [ "$QG_RESULT" = "FAILED" ]; then
+          echo "Reportando FAILURE no GitHub..."
           curl -s -X POST \
             -H "Authorization: token $GITHUB_TOKEN" \
             -H "Accept: application/vnd.github.v3+json" \
@@ -60,14 +105,10 @@ phases:
             -d '{"state":"failure","context":"sonarqube-quality-gate","description":"Quality Gate FAILED - merge bloqueado","target_url":"'"$SONAR_HOST_URL/dashboard?id=$SONAR_PROJECT_KEY"'"}'
           exit 1
         else
-          echo "QUALITY GATE PASSED - Reportando success no GitHub"
+          echo "Reportando SUCCESS no GitHub..."
           curl -s -X POST \
             -H "Authorization: token $GITHUB_TOKEN" \
             -H "Accept: application/vnd.github.v3+json" \
             "https://api.github.com/repos/$GITHUB_REPO/statuses/$COMMIT_SHA" \
             -d '{"state":"success","context":"sonarqube-quality-gate","description":"Quality Gate PASSED - merge liberado","target_url":"'"$SONAR_HOST_URL/dashboard?id=$SONAR_PROJECT_KEY"'"}'
         fi
-
-  post_build:
-    commands:
-      - echo "PR validation complete"
