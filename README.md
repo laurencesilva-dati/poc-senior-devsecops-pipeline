@@ -1,4 +1,4 @@
-# POC DevSecOps Pipeline - Senior
+# POC DevSecOps Pipeline - Senior - Staging
 
 ## Objetivo
 
